@@ -1039,23 +1039,13 @@ function bpbbpst_checklist_moderators( $forum_id = false ) {
  */
 function bpbbpst_support_statistics( $args = '' ) {
 
-	$defaults = array(
-		'post_type'      => bbp_get_topic_post_type(),
-		'posts_per_page' => -1,
-		'meta_query'     => array(
-			array(
-				'key' => '_bpbbpst_support_topic',
-				'value' => 1,
-				'type' => 'numeric',
-				'compare' => '>='
-			)
-		)
-	);
-
-	$r = bbp_parse_args( $args, $defaults, 'support_statistics' );
-
-	$support_query = new WP_Query( $r );
-	$total_support = $support_query->found_posts;
+    global $wpdb;
+    $query = $wpdb->prepare(
+            "SELECT COUNT(meta_value) FROM `wp_postmeta` WHERE `meta_key` = %s AND `meta_value` = %d",
+            '_bpbbpst_support_topic',
+            1
+    );
+    $total_support = $wpdb->get_var($query);
 
 	$all_status = bpbbpst_get_support_status();
 	unset( $all_status['topic-not-support'] );
