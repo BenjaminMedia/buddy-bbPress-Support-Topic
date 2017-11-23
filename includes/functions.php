@@ -1039,6 +1039,24 @@ function bpbbpst_checklist_moderators( $forum_id = false ) {
  */
 function bpbbpst_support_statistics( $args = '' ) {
 
+    $defaults = array(
+        'post_type'      => bbp_get_topic_post_type(),
+        'posts_per_page' => 100,
+        'paged' => 0,
+        'meta_query'     => array(
+            array(
+                'key' => '_bpbbpst_support_topic',
+                'value' => 1,
+                'type' => 'numeric',
+                'compare' => '>='
+            )
+        )
+    );
+
+    $r = bbp_parse_args( $args, $defaults, 'support_statistics' );
+
+    $support_query = new WP_Query( $r );
+
     global $wpdb;
     $query = $wpdb->prepare(
             "SELECT COUNT(meta_value) FROM `wp_postmeta` WHERE `meta_key` = %s AND `meta_value` = %d",
@@ -1065,33 +1083,33 @@ function bpbbpst_support_statistics( $args = '' ) {
 		}
 	}
 
-	if ( $support_query->have_posts() ) :
 
-		while (  $support_query->have_posts() ) :  $support_query->the_post();
+    while (  $support_query->have_posts() ) {
 
-			$db_status = get_post_meta( $support_query->post->ID, '_bpbbpst_support_topic', true );
+	    foreach ($support_query->get_posts() as $post) {
+            $db_status = get_post_meta($post->ID, '_bpbbpst_support_topic', true);
 
-			// We need to check parent forum support setting to avoid inconsistent stats
-			$forum_id             = $support_query->post->post_parent;
-			$forum_support_status = false;
+            // We need to check parent forum support setting to avoid inconsistent stats
+            $forum_id = $post->post_parent;
+            $forum_support_status = false;
 
-			if ( ! empty( $forum_id ) ) {
-				$forum_support_status = get_post_meta( $forum_id, '_bpbbpst_forum_settings', true );
+            if (! empty($forum_id)) {
+                $forum_support_status = get_post_meta($forum_id, '_bpbbpst_forum_settings', true);
 
-				if ( ! in_array( $forum_support_status, array( 1, 2 ) ) ) {
-					// Let's avoid the display of the topic in the WP_List_Table
-					delete_post_meta( $support_query->post->ID, '_bpbbpst_support_topic' );
-					continue;
-				}
-			}
+                if (! in_array($forum_support_status, [1, 2])) {
+                    // Let's avoid the display of the topic in the WP_List_Table
+                    delete_post_meta($post->ID, '_bpbbpst_support_topic');
+                    continue;
+                }
+            }
 
-			$support_stat[$db_status]['stat'] += 1;
+            $support_stat[$db_status]['stat'] += 1;
+        }
 
-		endwhile;
+        $defaults['paged']++;
+        $support_query = $support_query = new WP_Query(  bbp_parse_args( $args, $defaults, 'support_statistics' ) );
 
-		wp_reset_postdata();
-
-	endif;
+    }
 
 	$goon = false;
 
